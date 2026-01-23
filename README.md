@@ -27,6 +27,6 @@ R.I.P. Epochwood
 
 可以将选区最高一层的道路中国道路整砖替换成半砖，可以将最高一层的下半砖下移半格替换成双半砖（可选）。
 
-【该部分除道路中国模组适配性外其余代码均由[SubBedrock](https://github.com/SunBedrock)完成】
+【该部分除道路中国模组适配性外其余代码均由[SunBedrock](https://github.com/SunBedrock)完成】
 
 `/cs repslab` 或 `/cs repslab -r`（只替换道路方块）
