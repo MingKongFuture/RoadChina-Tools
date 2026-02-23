@@ -11,14 +11,13 @@ importPackage(Packages.com.sk89q.worldedit);
 importPackage(Packages.com.sk89q.worldedit.math);
 importPackage(Packages.com.sk89q.worldedit.blocks);
 
-var pair = 0;
+var pair = 0;            //确保两个斜线方块被视为一个方块处理
 var offset_dir;          //S形线段方向（左/右）
 var offset_sta = false;  //S形线段方向已记录
 
-var dotted_counter = 4;  //1、2、3沥青；4、5、6标线
+var dotted_counter = 0;  //1、2、3沥青；4、5、6标线
 var dotted_sta = false;  //未启用虚线功能
 
-var corner_ensure = 1;   //确保两个斜线方块被视为一个方块处理（虚线）
 
 var blocks = context.remember();
 var player = context.getPlayer();
@@ -130,17 +129,17 @@ if (argv[1] == undefined) {
 
             // 检查直行方向（包括上下层）
             if (is_online(origin, straight.add(up))) {
-                var offset_sta = false;
+                offset_sta = false;
                 nextDir = straight.add(up);
                 foundNext = true;
             } else if (is_online(origin, straight)) {
                 nextDir = straight;
                 foundNext = true;
-                var offset_sta = false;
+                offset_sta = false;
             } else if (is_online(origin, straight.add(down))) {
                 nextDir = straight.add(down);
                 foundNext = true;
-                var offset_sta = false;
+                offset_sta = false;
             }
 
             // 检查左右方向（包括上下层）
@@ -204,7 +203,7 @@ if (argv[1] == undefined) {
             if (i > 1){
                 previous_curve = i > 0 ? lines[i - 1].cornerType : "";
                 if (previous_curve == "right" && pair == 1 && cornerType == ""){
-                    player.print("顺时针")
+                    //player.print("顺时针")
                     offset_sta = false;
                     const nextDir_C = {
                         north: "east",
@@ -218,7 +217,7 @@ if (argv[1] == undefined) {
                     facing = nextDir_C[facing] || "north";
                     offset_sta = false;
                 } else if (previous_curve == "left" && pair == 1 && cornerType == ""){
-                    player.print("逆时针")
+                    //player.print("逆时针")
                     const nextDir_AC = {
                         north: "west",
                         west: "south",
@@ -251,11 +250,7 @@ if (argv[1] == undefined) {
                 } else if (pair == 2){
                     pair = 1;
                 }
-                if (dotted_sta){
-                    corner_ensure = 1 - corner_ensure;
-                    //player.print("当前count " + dotted_counter + "；遇到斜线：" + corner_ensure);
-                }
-                player.print("当前为第" + pair + "个斜线方块，往" + cornerType + "侧，指针方向：" + facing + "，指针整体方向：" + offset_dir)
+                //player.print("当前为第" + pair + "个斜线方块，往" + cornerType + "侧，指针方向：" + facing + "，指针整体方向：" + offset_dir)
                 if (cornerType === "left"){
                     if ((facing == "east" && offset_dir == "l") || (facing == "north" && offset_dir == "r"))
                         newBlockStr = cornerBlock + "[facing=west]";
@@ -284,17 +279,23 @@ if (argv[1] == undefined) {
 
             //虚线
             if (dotted_sta){
-                if (dotted_counter == 7) dotted_counter = 1;
-                if (dotted_counter < 4){
+
+                if (cornerType){
+                    if (pair == 1){
+                        dotted_counter++;
+                    }
+                } else {
+                    dotted_counter++;
+                }
+
+                if (dotted_counter > 6) dotted_counter = 1;
+
+                if (dotted_counter <= 3){
                     newBlockStr = "roadchina:asphalt_road";
-                    // player.print("隐藏")
-                }// else {
-                    // player.print("显示")
-                // }
-                if (corner_ensure == 1) dotted_counter++;
+                }
             }
 
-            player.print(facing)
+            //player.print(facing)
             var newBlock = context.getBlock(newBlockStr);
             if (newBlock) {
                 blocks.setBlock(pos, newBlock);
