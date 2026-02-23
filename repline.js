@@ -11,6 +11,7 @@ importPackage(Packages.com.sk89q.worldedit);
 importPackage(Packages.com.sk89q.worldedit.math);
 importPackage(Packages.com.sk89q.worldedit.blocks);
 
+var pair = 0;
 var offset_dir;          //S形线段方向（左/右）
 var offset_sta = false;  //S形线段方向已记录
 
@@ -34,7 +35,6 @@ if (Math.abs(dx) > Math.abs(dz)) {
 } else {
     facing = dz > 0 ? "south" : "north";
 }
-
 if (argv[1] == undefined) {
     player.printError("请输入参数，/cs repline [颜色(w/y/dw/dy/wd/yd/dwd/dyd)]")
 } else if (argv[1] == "w" || argv[1] == "y" || argv[1] == "dw" || argv[1] == "dy" || argv[1] == "wd" || argv[1] == "yd" || argv[1] == "dwd" || argv[1] == "dyd") {
@@ -114,13 +114,14 @@ if (argv[1] == undefined) {
             } else if (!leftConnected && rightConnected) {
                 cornerType = "right";
             }
-
-            if (!offset_sta){
+            
+            
+            if (!offset_sta && i > 1){
                 offset_dir = cornerType == "left" ? "l" : "r";
                 offset_sta = true;
             }
 
-            lines.push({ pos: origin, facing: facing, cornerType: cornerType });
+            lines.push({ pos: origin, facing: facing, cornerType: cornerType, offset_dir: offset_dir });
             lines_string.push(String(origin));
 
             // 寻找下一个方块（优先检查直行方向，然后左右，包括上下层）
@@ -129,14 +130,17 @@ if (argv[1] == undefined) {
 
             // 检查直行方向（包括上下层）
             if (is_online(origin, straight.add(up))) {
+                var offset_sta = false;
                 nextDir = straight.add(up);
                 foundNext = true;
             } else if (is_online(origin, straight)) {
                 nextDir = straight;
                 foundNext = true;
+                var offset_sta = false;
             } else if (is_online(origin, straight.add(down))) {
                 nextDir = straight.add(down);
                 foundNext = true;
+                var offset_sta = false;
             }
 
             // 检查左右方向（包括上下层）
@@ -173,6 +177,7 @@ if (argv[1] == undefined) {
 
     function replaceFacingBlocks(origin, distance) {
         // 根据参数设置方块类型
+        
         if (argv[1] == "w" || argv[1] == "wd") { //单白线
             var straightBlock = "roadchina:white_line_1";
             var cornerBlock = "roadchina:white_line_2";
@@ -189,23 +194,68 @@ if (argv[1] == undefined) {
 
         var lines = lineDirectionWithCorners(origin, distance);
         var replacedCount = 0;
-
+        
         for (var i = 0; i < lines.length; i++) {
             var info = lines[i];
             var pos = info.pos;
             var facing = info.facing;
             var cornerType = info.cornerType;
+            var offset_dir = info.offset_dir;
+            if (i > 1){
+                previous_curve = i > 0 ? lines[i - 1].cornerType : "";
+                if (previous_curve == "right" && pair == 1 && cornerType == ""){
+                    player.print("顺时针")
+                    offset_sta = false;
+                    const nextDir_C = {
+                        north: "east",
+                        east: "south",
+                        south: "west",
+                        west: "north"
+                    };
+                    for (var j = i; j < lines.length; j++) {
+                        lines[j].facing = nextDir_C[lines[j].facing];
+                    }
+                    facing = nextDir_C[facing] || "north";
+                    offset_sta = false;
+                } else if (previous_curve == "left" && pair == 1 && cornerType == ""){
+                    player.print("逆时针")
+                    const nextDir_AC = {
+                        north: "west",
+                        west: "south",
+                        south: "east",
+                        east: "north"
+                    };
+                    for (var j = i; j < lines.length; j++) {
+                        lines[j].facing = nextDir_AC[lines[j].facing];
+                    }
+                    facing = nextDir_AC[facing] || "north";
+                    offset_sta = false;
+                }
+            }
+
+            if (!offset_sta && i > 1){
+                offset_dir = cornerType == "left" ? "l" : "r";
+                offset_sta = true;
+            }
 
             // 根据是否转弯选择方块类型
             var blockType = cornerType ? cornerBlock : straightBlock;
             var newBlockStr = blockType + "[facing=" + facing + "]";
-
+            
             // 特殊处理：对于弯道中的斜线方块，调整facing方向
             if (cornerType && (cornerBlock !== straightBlock)) {
+                if (pair == 0){
+                    pair = 1;
+                } else if (pair == 1){
+                    pair = 2;
+                } else if (pair == 2){
+                    pair = 1;
+                }
                 if (dotted_sta){
                     corner_ensure = 1 - corner_ensure;
-                    // player.print("当前count " + dotted_counter + "；遇到斜线：" + corner_ensure); debug死我了
+                    //player.print("当前count " + dotted_counter + "；遇到斜线：" + corner_ensure);
                 }
+                player.print("当前为第" + pair + "个斜线方块，往" + cornerType + "侧，指针方向：" + facing + "，指针整体方向：" + offset_dir)
                 if (cornerType === "left"){
                     if ((facing == "east" && offset_dir == "l") || (facing == "north" && offset_dir == "r"))
                         newBlockStr = cornerBlock + "[facing=west]";
@@ -225,9 +275,12 @@ if (argv[1] == undefined) {
                     if ((facing == "west" && offset_dir == "r") || (facing == "north" && offset_dir == "l"))
                         newBlockStr = cornerBlock + "[facing=north]";
                 }
-            } // else {
+
+
+            } else {
+                pair = 0;
                 // player.print("当前count " + dotted_counter + "；遇到直线");
-            // }
+            }
 
             //虚线
             if (dotted_sta){
@@ -241,7 +294,7 @@ if (argv[1] == undefined) {
                 if (corner_ensure == 1) dotted_counter++;
             }
 
-            
+            player.print(facing)
             var newBlock = context.getBlock(newBlockStr);
             if (newBlock) {
                 blocks.setBlock(pos, newBlock);
